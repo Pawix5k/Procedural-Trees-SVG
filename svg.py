@@ -43,7 +43,9 @@ def save_svg(svg_content: str) -> None:
         file.write(svg_content)
 
 
-def generate_svg_from_tree(trunk: Trunk, start_x: int, start_y: int) -> None:
+def generate_svg_from_tree(trunk: Trunk) -> None:
+    start_x = 0
+    start_y = 0
     lines = generate_lines(trunk, start_x, start_y)
     bounding_box = get_bounding_box(lines)
     x_min, y_min, x_max, y_max = bounding_box
