@@ -1,11 +1,14 @@
-from enum import Enum, auto
 import random
+
+from enum import Enum, auto
+from itertools import accumulate
 
 
 class Trunk:
     def __init__(self, angle: int = 0):
         self.angle = angle
         self.length = None
+        self.width = None
         self.children = []
 
     def __repr__(self):
@@ -36,6 +39,8 @@ class TreeParams:
         epsilon_trunk_length: float,
         initial_angle: float,
         stop_no_growth_until: int,
+        trunk_width: float,
+        delta_trunk_width: float,
     ):
         self.depth_limit = depth_limit
         self.no_growth_chance = no_growth_chance
@@ -52,14 +57,13 @@ class TreeParams:
         self.epsilon_trunk_length = epsilon_trunk_length
         self.inital_angle = initial_angle
         self.stop_no_growth_until = stop_no_growth_until
+        self.trunk_width = trunk_width
+        self.delta_trunk_width = delta_trunk_width
         self.cum_weights_of_partition = self.get_cum_weights_of_partition()
     
     def get_cum_weights_of_partition(self) -> list[float]:
         weights = [self.split_chance, self.offshoot_chance, self.no_growth_chance]
-        cum_weights = [
-            weights[i] + (weights[i - 1] if i > 0 else 0)
-            for i in range(len(weights)) 
-        ]
+        cum_weights = list(accumulate(weights))
         return cum_weights
 
     def get_trunk_length(self) -> float:
@@ -92,12 +96,15 @@ class TreeParams:
         self.split_chance *= self.delta_split_chance
         self.offshoot_chance *= self.delta_offshoot_chance
         self.cum_weights_of_partition = self.get_cum_weights_of_partition()
+        self.trunk_length *= self.delta_trunk_length
+        self.trunk_width *= self.delta_trunk_width
 
 
 def resolve_partition(trunk: Trunk, params: TreeParams, depth: int) -> None:
     if depth >= params.depth_limit:
         return
     result = params.get_partition_result(depth)
+    print(result)
     if result == PartitionResults.SPLIT:
         trunk.children = [
             Trunk(trunk.angle + params.get_left_split_angle()),
@@ -113,15 +120,19 @@ def generate_tree(root: Trunk, params: TreeParams):
     # random.seed(341)
     depth = 0
     root.angle = params.inital_angle
+    root.width = params.trunk_width
     children = [root]
+
+    print(params.cum_weights_of_partition)
 
     while(children):
         new_children = []
         for child in children:
             child.length = params.get_trunk_length()
+            child.width = params.trunk_width
             resolve_partition(child, params, depth)
             new_children.extend(child.children)
-            print(child)
         depth += 1
         params.update_all()
+        print(params.cum_weights_of_partition)
         children = new_children
