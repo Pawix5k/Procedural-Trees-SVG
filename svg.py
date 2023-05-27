@@ -14,13 +14,39 @@ def get_end_cords(length: float, angle: int, start_x: int, start_y: int) -> tupl
 
 def get_line_string(line: Line):
     a = get_end_cords(line.width / 2, line.angle - 90, line.start_x, line.start_y)
-    b = get_end_cords(line.width / 2, line.angle + 90, line.start_x, line.start_y)
-    c = get_end_cords(line.width / 2, line.angle + 90, line.end_x, line.end_y)
-    d = get_end_cords(line.width / 2, line.angle - 90, line.end_x, line.end_y)
+    b = get_end_cords(line.width / 2, line.angle - 90, line.end_x, line.end_y)
+    c = get_end_cords(line.width / 2, line.angle, line.end_x, line.end_y)
+    d = get_end_cords(line.width / 2, line.angle + 90, line.end_x, line.end_y)
+    e = get_end_cords(line.width / 2, line.angle + 90, line.start_x, line.start_y)
 
-    polygon = f'''<polygon points="{a[0]},{a[1]} {b[0]},{b[1]} {c[0]},{c[1]} {d[0]},{d[1]}"
-    fill="#713C03" stroke="black" stroke-width="3"/>'''
-    return polygon
+    small_offset_left = get_end_cords(line.width / 4, line.angle - 90, 0, 0)
+    small_offset_right = (-small_offset_left[0], -small_offset_left[1])
+    small_offset_up = get_end_cords(line.width / 4, line.angle, 0, 0)
+
+    print(small_offset_left)
+    print(small_offset_right)
+
+    bezier_a = (b[0] + small_offset_up[0], b[1] + small_offset_up[1])
+    bezier_b = (c[0] + small_offset_left[0], c[1] + small_offset_left[1])
+    bezier_c = (c[0] + small_offset_right[0], c[1] + small_offset_right[1])
+    bezier_d = (d[0] + small_offset_up[0], d[1] + small_offset_up[1])
+
+    return f'''
+    <path d="M {a[0]} {a[1]} L {b[0]} {b[1]}
+    C {bezier_a[0]} {bezier_a[1]}, {bezier_b[0]} {bezier_b[1]}, {c[0]} {c[1]}
+    C {bezier_c[0]} {bezier_c[1]}, {bezier_d[0]} {bezier_d[1]}, {d[0]} {d[1]},
+    L {e[0]} {e[1]}" stroke="black" stroke-width="3" fill="#6D3607"/>'''
+
+
+
+    # a = get_end_cords(line.width / 2, line.angle - 90, line.start_x, line.start_y)
+    # b = get_end_cords(line.width / 2, line.angle + 90, line.start_x, line.start_y)
+    # c = get_end_cords(line.width / 2, line.angle + 90, line.end_x, line.end_y)
+    # d = get_end_cords(line.width / 2, line.angle - 90, line.end_x, line.end_y)
+
+    # polygon = f'''<polygon points="{a[0]},{a[1]} {b[0]},{b[1]} {c[0]},{c[1]} {d[0]},{d[1]}"
+    # fill="#713C03" stroke="black" stroke-width="3"/>'''
+    # return polygon
 
 
 def generate_lines(trunk: Trunk, start_x: int, start_y: int) -> None:
@@ -62,14 +88,15 @@ def generate_svg_from_tree(trunk: Trunk) -> None:
     lines = generate_lines(trunk, start_x, start_y)
     bounding_box = get_bounding_box(lines)
     x_min, y_min, x_max, y_max = bounding_box
-    vp = (
+    vb = (
         x_min - 200,
         y_min - 200,
         x_max - x_min + 400,
         y_max - y_min + 400
     )
+
     svg_content = []
-    svg_content.append(f'<svg viewBox="{vp[0]} {vp[1]} {vp[2]} {vp[3]}" xmlns="http://www.w3.org/2000/svg">')
+    svg_content.append(f'<svg viewBox="{vb[0]} {vb[1]} {vb[2]} {vb[3]}" xmlns="http://www.w3.org/2000/svg">')
     for line in lines:
         svg_content.append(get_line_string(line))
     svg_content.append("</svg>")

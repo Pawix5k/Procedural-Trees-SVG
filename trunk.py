@@ -123,8 +123,6 @@ def generate_tree(root: Trunk, params: TreeParams):
     root.width = params.trunk_width
     children = [root]
 
-    print(params.cum_weights_of_partition)
-
     while(children):
         new_children = []
         for child in children:
@@ -134,5 +132,4 @@ def generate_tree(root: Trunk, params: TreeParams):
             new_children.extend(child.children)
         depth += 1
         params.update_all()
-        print(params.cum_weights_of_partition)
         children = new_children

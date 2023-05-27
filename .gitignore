@@ -2,3 +2,4 @@ venv
 .vscode
 my_tree.svg
 __pycache__
+test*
