@@ -8,11 +8,21 @@ class Trunk:
     def __init__(self, angle: int = 0):
         self.angle = angle
         self.length = None
-        self.width = None
+        self.start_width = None
+        self.end_width = None
         self.children = []
+        self.leaves = []
 
     def __repr__(self):
         return f"{self.__class__.__name__}(length={self.length}, angle={self.angle})"
+
+
+class LeafParams:
+    def __init__(self, size: float, angles: tuple[float]):
+        self.size = size
+        self.angles = angles
+        # self.points = [(0., 0.), (-0.5, -0.2), (-0.4, -0.35), (0., -1.), (0.4, -0.35), (0.5, -0.2)]
+        self.points = [(0., 0.), (0., -0.3), (-0.5, -0.5), (-0.4, -0.65), (0., -1.3), (0.4, -0.65), (0.5, -0.5), (0., -0.3)]
 
 
 class PartitionResults(Enum):
@@ -104,7 +114,6 @@ def resolve_partition(trunk: Trunk, params: TreeParams, depth: int) -> None:
     if depth >= params.depth_limit:
         return
     result = params.get_partition_result(depth)
-    print(result)
     if result == PartitionResults.SPLIT:
         trunk.children = [
             Trunk(trunk.angle + params.get_left_split_angle()),
@@ -120,15 +129,19 @@ def generate_tree(root: Trunk, params: TreeParams):
     # random.seed(341)
     depth = 0
     root.angle = params.inital_angle
-    root.width = params.trunk_width
+    root.start_width = params.trunk_width
+    root.end_width = params.trunk_width * params.delta_trunk_width
     children = [root]
 
     while(children):
         new_children = []
         for child in children:
             child.length = params.get_trunk_length()
-            child.width = params.trunk_width
+            child.start_width = params.trunk_width
+            child.end_width = params.trunk_width * params.delta_trunk_width
             resolve_partition(child, params, depth)
+            if not child.children:
+                child.leaves = [0.1, 0.4, 0.7, 0.95]
             new_children.extend(child.children)
         depth += 1
         params.update_all()
