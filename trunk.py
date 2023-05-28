@@ -4,6 +4,32 @@ from enum import Enum, auto
 from itertools import accumulate
 
 
+class Angle:
+    def __init__(self, value):
+        self.value = self.normalize(value)
+    
+    def __add__(self, other):
+        return Angle(self.value + other.value)
+
+    def __radd__(self, other):
+        return Angle(self.value + other.value)
+    
+    def __sub__(self, other):
+        return Angle(self.value - other.value)
+
+    def __rsub__(self, other):
+        return Angle(self.value - other.value)
+    
+    def __mul__(self, other):
+        return Angle(self.value * other)
+    
+    def __rmul__(self, other):
+        return Angle(self.value * other)
+    
+    def normalize(self, value):
+        return value % 360
+
+
 class Trunk:
     def __init__(self, angle: int = 0):
         self.angle = angle
@@ -70,6 +96,10 @@ class TreeParams:
         self.trunk_width = trunk_width
         self.delta_trunk_width = delta_trunk_width
         self.cum_weights_of_partition = self.get_cum_weights_of_partition()
+
+        self.straightening_factor = 0.0
+        # self.gravity_factor = 0.0
+        self.gravity_factor = 0.2
     
     def get_cum_weights_of_partition(self) -> list[float]:
         weights = [self.split_chance, self.offshoot_chance, self.no_growth_chance]
@@ -91,15 +121,54 @@ class TreeParams:
             return PartitionResults.OFFSHOOT
         return PartitionResults.NO_GROWTH
     
-    def get_left_split_angle(self) -> float:
-        return self.angles_of_split[0] + random.gauss() * self.epsilon_angles * self.angles_of_split[0]
+    def get_gravity_angle(self, angle):
+        if angle.value > 180:
+            a1 = Angle(0) - angle
+            a2 = angle - Angle(180)
+            print(a1.value, a2.value)
+            ang = a2
 
-    def get_right_split_angle(self) -> float:
-        return self.angles_of_split[1] + random.gauss() * self.epsilon_angles * self.angles_of_split[1]
+            if a1.value < a2.value:
+                ang = a1
+            if self.gravity_factor >= 0:
+                return ang * self.gravity_factor
+            return ang * self.gravity_factor
+        else:
+            a1 = angle
+            a2 = Angle(180) - angle
+            print(a1.value, a2.value)
+            
+            ang = a2
+            if a1.value < a2.value:
+                ang = a1
+            if self.gravity_factor >= 0:
+                return ang * -self.gravity_factor
+            return ang * -self.gravity_factor
     
-    def get_offshoot_angle(self) -> float:
+    def get_left_split_angle(self, parent_angle) -> float:
+        parent_angle = Angle(parent_angle)
+        comp_angle = parent_angle + self.angles_of_split[0] + random.gauss() * self.epsilon_angles * Angle(90) - parent_angle * self.straightening_factor
+        print(f"pre grav {comp_angle.value}")
+        comp_angle += self.get_gravity_angle(comp_angle)
+        print(f"post grav {comp_angle.value}")
+        return comp_angle.value
+
+    def get_right_split_angle(self, parent_angle) -> float:
+        parent_angle = Angle(parent_angle)
+        comp_angle = parent_angle + self.angles_of_split[1] + random.gauss() * self.epsilon_angles * Angle(90) - parent_angle * self.straightening_factor
+        print(f"pre grav {comp_angle.value}")
+        comp_angle += self.get_gravity_angle(comp_angle)
+        print(f"post grav {comp_angle.value}")
+        return comp_angle.value
+        
+    def get_offshoot_angle(self, parent_angle) -> float:
+        parent_angle = Angle(parent_angle)
         angle = random.choice(self.angles_of_offshoot)
-        return angle + random.gauss() * self.epsilon_angles * angle
+        comp_angle = parent_angle + angle + random.gauss() * self.epsilon_angles * Angle(90) - parent_angle * self.straightening_factor
+        print(f"pre grav {comp_angle.value}")
+        comp_angle += self.get_gravity_angle(comp_angle)
+        print(f"post grav {comp_angle.value}")
+        return comp_angle.value
     
     def update_all(self) -> None:
         self.no_growth_chance *= self.delta_no_growth_chance
@@ -116,17 +185,18 @@ def resolve_partition(trunk: Trunk, params: TreeParams, depth: int) -> None:
     result = params.get_partition_result(depth)
     if result == PartitionResults.SPLIT:
         trunk.children = [
-            Trunk(trunk.angle + params.get_left_split_angle()),
-            Trunk(trunk.angle + params.get_right_split_angle()),
+            Trunk(params.get_left_split_angle(trunk.angle)),
+            Trunk(params.get_right_split_angle(trunk.angle)),
         ]
     elif result == PartitionResults.OFFSHOOT:
         trunk.children = [
-            Trunk(trunk.angle + params.get_offshoot_angle()),
+            Trunk(params.get_offshoot_angle(trunk.angle)),
+            # Trunk(trunk.angle + random.gauss() * 10.0),
         ]
     
 
 def generate_tree(root: Trunk, params: TreeParams):
-    # random.seed(341)
+    # random.seed(34145)
     depth = 0
     root.angle = params.inital_angle
     root.start_width = params.trunk_width
@@ -141,7 +211,7 @@ def generate_tree(root: Trunk, params: TreeParams):
             child.end_width = params.trunk_width * params.delta_trunk_width
             resolve_partition(child, params, depth)
             if not child.children:
-                child.leaves = [0.1, 0.4, 0.7, 0.95]
+                child.leaves = [0.1, 0.5, 0.95]
             new_children.extend(child.children)
         depth += 1
         params.update_all()
